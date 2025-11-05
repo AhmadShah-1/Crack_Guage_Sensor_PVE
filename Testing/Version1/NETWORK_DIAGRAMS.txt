@@ -1,0 +1,535 @@
+========================================
+ESP32-CAM IMAGE TRANSFER NETWORK DIAGRAMS
+========================================
+
+1. ESP-NOW: SINGLE TRANSMITTER CONFIGURATION
+============================================
+
+    ┌─────────────────┐
+    │   ESP32-CAM     │
+    │     (A_T1)      │
+    │  MAC: A4:CF:12  │
+    │      :3C:AF:10  │
+    │                 │
+    │  - Captures     │
+    │  - Encodes      │
+    │  - Chunks       │
+    └────────┬────────┘
+             │
+             │ ESP-NOW
+             │ (Direct, 240 byte packets)
+             │ ~2-3 seconds transfer
+             │
+             ▼
+    ┌─────────────────┐
+    │    ESP32        │
+    │      (R1)       │
+    │  MAC: A4:CF:12  │
+    │      :9B:7E:23  │
+    │                 │
+    │  - Receives     │
+    │  - Reassembles  │
+    │  - Stores       │
+    └─────────────────┘
+
+
+2. ESP-NOW: MULTIPLE TRANSMITTERS
+==================================
+
+    ┌─────────────┐
+    │ ESP32-CAM   │
+    │   (A_T1)    │
+    └──────┬──────┘
+           │
+           │
+           ├────────────────┐
+           │                │
+           │                │
+           ▼                ▼
+    ┌──────────┐    ┌──────────┐
+    │  ESP32   │    │  ESP32   │
+    │   (R1)   │    │  (A_SR)  │
+    └──────────┘    └──────────┘
+           ▲                ▲
+           │                │
+           │                │
+           ├────────────────┘
+           │
+    ┌──────┴──────┐
+    │ ESP32-CAM   │
+    │   (A_T2)    │
+    └─────────────┘
+
+Each transmitter sends to designated receiver(s)
+Receivers operate independently
+No interference between pairs
+
+
+3. MESH NETWORK: SIMPLE CONFIGURATION
+======================================
+
+    ┌─────────────────┐
+    │   ESP32-CAM     │
+    │     (A_T1)      │
+    │                 │
+    │  - Captures     │
+    │  - Broadcasts   │
+    └────────┬────────┘
+             │
+             │ Mesh Broadcast
+             │ (1000 byte chunks, hex encoded)
+             │ ~5-8 seconds transfer
+             │
+             ▼
+    ┌─────────────────┐
+    │    ESP32        │
+    │      (R1)       │
+    │                 │
+    │  - Receives     │
+    │  - Processes    │
+    └─────────────────┘
+
+Mesh network automatically formed
+No MAC configuration needed
+Self-healing if connection lost
+
+
+4. MESH NETWORK: MULTI-NODE
+============================
+
+         ┌─────────────┐
+         │ ESP32-CAM   │
+         │   (A_T1)    │
+         └──────┬──────┘
+                │
+                │ Broadcast
+                ├──────────────┐
+                │              │
+                ▼              ▼
+         ┌──────────┐   ┌──────────┐
+         │  ESP32   │───│  ESP32   │
+         │   (R1)   │   │  (A_SR)  │
+         └──────────┘   └────┬─────┘
+                              │
+                              │
+                              ▼
+                       ┌──────────┐
+                       │ESP32-CAM │
+                       │  (A_T2)  │
+                       └──────────┘
+
+All nodes receive broadcast messages
+Mesh routes around failed nodes
+Multi-hop extends range
+
+
+5. MESH NETWORK: EXTENDED RANGE
+================================
+
+    ┌─────────────┐
+    │ ESP32-CAM   │    Range: 30m
+    │   (A_T1)    │    
+    └──────┬──────┘
+           │
+           │ Hop 1
+           │
+    ┌──────▼──────┐
+    │  ESP32      │    Range: 30m
+    │  (Relay)    │    
+    └──────┬──────┘
+           │
+           │ Hop 2
+           │
+    ┌──────▼──────┐
+    │  ESP32      │    Range: 30m
+    │  (A_SR)     │    
+    └──────┬──────┘
+           │
+           │ Hop 3
+           │
+    ┌──────▼──────┐
+    │  ESP32      │    Total Range: ~90m
+    │   (R1)      │    
+    └─────────────┘
+
+Each relay extends range by ~30m
+Automatic routing
+No configuration needed
+
+
+6. DATA FLOW: ESP-NOW
+======================
+
+ESP32-CAM Transmitter:
+┌─────────────────────────────────┐
+│  1. Initialize Camera           │
+│     - Configure pins            │
+│     - Set quality/size          │
+├─────────────────────────────────┤
+│  2. Capture Image               │
+│     - Turn on flash             │
+│     - Get frame buffer          │
+│     - Store in memory           │
+├─────────────────────────────────┤
+│  3. Prepare Transmission        │
+│     - Calculate packet count    │
+│     - Split into 240-byte chunks│
+├─────────────────────────────────┤
+│  4. Send Packets                │
+│     - For each chunk:           │
+│       * Add packet ID           │
+│       * Send via ESP-NOW        │
+│       * Wait for acknowledgment │
+├─────────────────────────────────┤
+│  5. Verify Transfer             │
+│     - Check success count       │
+│     - Report statistics         │
+└─────────────────────────────────┘
+            │
+            │ Wireless
+            ▼
+ESP32 Receiver:
+┌─────────────────────────────────┐
+│  1. Receive Callback            │
+│     - Parse packet structure    │
+│     - Validate packet ID        │
+├─────────────────────────────────┤
+│  2. First Packet                │
+│     - Allocate buffer           │
+│     - Initialize counters       │
+├─────────────────────────────────┤
+│  3. Store Chunks                │
+│     - Copy to correct offset    │
+│     - Track progress            │
+│     - Handle duplicates         │
+├─────────────────────────────────┤
+│  4. Complete Reception          │
+│     - Verify all packets        │
+│     - Calculate final size      │
+│     - Check JPEG markers        │
+├─────────────────────────────────┤
+│  5. Process Image               │
+│     - Validate JPEG             │
+│     - Save to SD card           │
+│     - Display/transmit          │
+└─────────────────────────────────┘
+
+
+7. DATA FLOW: MESH NETWORK
+===========================
+
+ESP32-CAM Transmitter:
+┌─────────────────────────────────┐
+│  1. Initialize                  │
+│     - Setup camera              │
+│     - Join mesh network         │
+│     - Wait for connections      │
+├─────────────────────────────────┤
+│  2. Capture Image               │
+│     - Triggered by timer        │
+│     - Store in buffer           │
+├─────────────────────────────────┤
+│  3. Send Start Message          │
+│     {                           │
+│       "type": "image_start",    │
+│       "size": 18234,            │
+│       "chunks": 19              │
+│     }                           │
+├─────────────────────────────────┤
+│  4. Send Chunks                 │
+│     For each 1000-byte chunk:   │
+│     {                           │
+│       "type": "image_chunk",    │
+│       "chunk_id": N,            │
+│       "data": "FFD8FF..."       │
+│     }                           │
+├─────────────────────────────────┤
+│  5. Send End Message            │
+│     {                           │
+│       "type": "image_end",      │
+│       "chunks": 19              │
+│     }                           │
+└─────────────────────────────────┘
+            │
+            │ Mesh Broadcast
+            ▼
+ESP32 Receiver(s):
+┌─────────────────────────────────┐
+│  1. Parse Message Type          │
+│     - Check JSON structure      │
+│     - Route to handler          │
+├─────────────────────────────────┤
+│  2. Handle Start Message        │
+│     - Allocate buffer           │
+│     - Initialize tracking       │
+├─────────────────────────────────┤
+│  3. Receive Chunks              │
+│     - Decode hex data           │
+│     - Store at offset           │
+│     - Mark chunk received       │
+├─────────────────────────────────┤
+│  4. Handle End Message          │
+│     - Check for missing chunks  │
+│     - Validate JPEG             │
+├─────────────────────────────────┤
+│  5. Process Complete Image      │
+│     - Save or display           │
+│     - Free memory               │
+│     - Ready for next            │
+└─────────────────────────────────┘
+
+
+8. PACKET STRUCTURE: ESP-NOW
+=============================
+
+struct_message {
+┌────────────────────────────────┐
+│  packet_id        [2 bytes]    │  Current packet number
+├────────────────────────────────┤
+│  total_packets    [2 bytes]    │  Total number of packets
+├────────────────────────────────┤
+│  data_length      [2 bytes]    │  Bytes in this packet
+├────────────────────────────────┤
+│  data            [240 bytes]   │  Actual image data
+└────────────────────────────────┘
+}
+Total: 246 bytes (within 250 ESP-NOW limit)
+
+Example for 24KB image:
+- Total packets: 100
+- Packet 0: bytes 0-239
+- Packet 1: bytes 240-479
+- ...
+- Packet 99: bytes 23760-23999 (remaining 240 bytes)
+
+
+9. MESSAGE STRUCTURE: MESH
+===========================
+
+Start Message:
+{
+  "type": "image_start",
+  "node": 3654789120,
+  "size": 18234,
+  "chunks": 19,
+  "chunk_size": 1000
+}
+
+Chunk Message:
+{
+  "type": "image_chunk",
+  "node": 3654789120,
+  "chunk_id": 5,
+  "total": 19,
+  "data": "FFD8FFE000104A46494600..." (hex encoded)
+}
+
+End Message:
+{
+  "type": "image_end",
+  "node": 3654789120,
+  "chunks": 19
+}
+
+
+10. DEVICE TOPOLOGY (Based on MACaddress.csv)
+==============================================
+
+Available Devices:
+┌─────────────────────────────────────────┐
+│  Device  │  MAC Address       │  Type   │
+├──────────┼────────────────────┼─────────┤
+│  R1      │  A4:CF:12:9B:7E:23 │  RX     │
+│  A_SR    │  A4:CF:12:58:D1:9A │  SubRX  │
+│  A_T1    │  A4:CF:12:3C:AF:10 │  TX-CAM │
+│  A_T2    │  A4:CF:12:E7:42:55 │  TX-CAM │
+└─────────────────────────────────────────┘
+
+Recommended Configuration A (ESP-NOW):
+    A_T1 ──────────► R1 (Main receiver)
+    A_T2 ──────────► R1 (Main receiver)
+
+Recommended Configuration B (ESP-NOW):
+    A_T1 ──────────► A_SR (Sub-receiver)
+    A_T2 ──────────► A_SR (Sub-receiver)
+                     A_SR ──────────► R1
+
+Recommended Configuration C (Mesh):
+    ┌──────────────────────────────┐
+    │      Mesh Network            │
+    │  ┌────┬────┬────┬────┐      │
+    │  │ R1 │A_SR│A_T1│A_T2│      │
+    │  └────┴────┴────┴────┘      │
+    │    All nodes connected       │
+    └──────────────────────────────┘
+
+
+11. TIMING DIAGRAM: IMAGE TRANSFER
+===================================
+
+ESP-NOW Transfer (VGA ~24KB):
+┌──────────────────────────────────────┐
+│ Time (ms)                            │
+├──────────────────────────────────────┤
+│    0 │ Flash on                      │
+│  200 │ Capture image                 │
+│  250 │ Flash off, process image      │
+│  300 │ Start transmission            │
+│      │ ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼  │
+│ 2800 │ Transmission complete         │
+│ 2900 │ Verify and cleanup            │
+│ 3000 │ Ready for next capture        │
+└──────────────────────────────────────┘
+Total: ~3 seconds per image
+
+Mesh Transfer (VGA ~24KB):
+┌──────────────────────────────────────┐
+│ Time (ms)                            │
+├──────────────────────────────────────┤
+│    0 │ Flash on                      │
+│  200 │ Capture image                 │
+│  250 │ Flash off, process image      │
+│  300 │ Send start message            │
+│  400 │ Begin chunk transmission      │
+│      │ ▼.......▼.......▼.......▼... │
+│ 7500 │ Chunks complete               │
+│ 7600 │ Send end message              │
+│ 8000 │ Ready for next capture        │
+└──────────────────────────────────────┘
+Total: ~8 seconds per image
+
+
+12. POWER CONSUMPTION (Typical Values)
+=======================================
+
+ESP32-CAM Operating Modes:
+┌────────────────────────────────┐
+│ Mode              Power         │
+├────────────────────────────────┤
+│ Deep Sleep        ~10 µA        │
+│ Light Sleep       ~800 µA       │
+│ Idle (no WiFi)    ~40 mA        │
+│ WiFi Connected    ~100 mA       │
+│ Camera Active     ~150 mA       │
+│ Flash LED On      ~300 mA       │
+│ Transmitting      ~180 mA       │
+└────────────────────────────────┘
+
+Battery Life Estimates (2000mAh):
+┌────────────────────────────────┐
+│ Scenario                Hours  │
+├────────────────────────────────┤
+│ Continuous stream     ~8-10 h  │
+│ Image every 10 sec    ~15-20 h │
+│ Image every 1 min     ~60-80 h │
+│ Image every 10 min    ~400 h   │
+│ With deep sleep       ~1000+ h │
+└────────────────────────────────┘
+
+
+13. FILE ORGANIZATION
+=====================
+
+Testing/
+│
+├── NOW/                      ESP-NOW Implementation
+│   ├── send_one_picture/
+│   │   ├── *.ino            Upload to ESP32-CAM
+│   │   └── camera_pins.h    Camera configuration
+│   │
+│   ├── receive_one_picture/
+│   │   └── *.ino            Upload to ESP32 receiver
+│   │
+│   ├── receive_and_save_SD/
+│   │   └── *.ino            Receiver with SD storage
+│   │
+│   └── README.md            NOW-specific guide
+│
+├── Mesh/                     Mesh Implementation
+│   ├── send_one_picture/
+│   │   ├── *.ino            Upload to ESP32-CAM
+│   │   └── camera_pins.h    Camera configuration
+│   │
+│   ├── receive_one_picture/
+│   │   └── *.ino            Upload to ESP32 receiver
+│   │
+│   └── README.md            Mesh-specific guide
+│
+├── README.md                 Main documentation
+├── configuration_guide.txt   Setup instructions
+├── PROJECT_SUMMARY.md        Project overview
+└── NETWORK_DIAGRAMS.txt      This file
+
+
+14. DECISION TREE: WHICH PROTOCOL?
+===================================
+
+                Start
+                  │
+                  ▼
+       Need multi-hop range?
+          /              \
+        Yes              No
+         │                │
+         │                ▼
+         │     Need fastest speed?
+         │          /         \
+         │        Yes          No
+         │         │            │
+         │         │            ▼
+         │         │   Many transmitters?
+         │         │      /         \
+         │         │    Yes          No
+         │         │     │            │
+         ▼         ▼     ▼            ▼
+       MESH    ESP-NOW  MESH      ESP-NOW
+                                  (easier)
+
+ESP-NOW if:
+  ✓ Fixed devices
+  ✓ Speed critical
+  ✓ Low latency needed
+  ✓ Direct line of sight
+
+Mesh if:
+  ✓ Dynamic network
+  ✓ Need multi-hop
+  ✓ Many nodes
+  ✓ Self-healing important
+  ✓ Easy setup preferred
+
+
+15. TROUBLESHOOTING FLOWCHART
+==============================
+
+          Camera Init Failed
+                  │
+                  ▼
+         Check Board Selection
+              AI Thinker?
+          /              \
+        No                Yes
+         │                 │
+         ▼                 ▼
+    Fix Board       Check Partition
+                       Huge APP?
+                    /         \
+                  No           Yes
+                   │            │
+                   ▼            ▼
+              Fix Partition   Check Power
+                                 2A?
+                             /       \
+                           No         Yes
+                            │          │
+                            ▼          ▼
+                       Add Power   Replace
+                         Supply     Module
+
+========================================
+For more details, see:
+- Testing/README.md (Main guide)
+- Testing/configuration_guide.txt (Setup)
+- Testing/PROJECT_SUMMARY.md (Overview)
+========================================
+

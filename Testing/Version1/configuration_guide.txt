@@ -1,0 +1,377 @@
+===============================================
+ESP32-CAM IMAGE TRANSFER CONFIGURATION GUIDE
+===============================================
+
+QUICK REFERENCE - DEVICE INFORMATION
+=====================================
+
+From assests/MACaddress.csv:
+
+Device  | MAC Address        | Type       | Role
+--------|--------------------|------------|------------------
+R1      | A4:CF:12:9B:7E:23 | ESP-32     | Main Receiver
+A_SR    | A4:CF:12:58:D1:9A | ESP-32     | Sub-Receiver
+A_T1    | A4:CF:12:3C:AF:10 | ESP-32-CAM | Transmitter
+A_T2    | A4:CF:12:E7:42:55 | ESP-32-CAM | Transmitter
+
+Network Schema (from assests/schema):
+- R1 can receive from any transmitter
+- A_SR works with A_T1 and A_T2
+- All devices compatible with both ESP-NOW and Mesh
+
+
+ARDUINO IDE CONFIGURATION
+==========================
+
+Board Settings:
+---------------
+Board: "AI Thinker ESP32-CAM" (for transmitters)
+       "ESP32 Dev Module" (for receivers)
+Upload Speed: 115200
+Flash Frequency: 80MHz
+Flash Mode: QIO
+Partition Scheme: "Huge APP (3MB No OTA/1MB SPIFFS)"
+Core Debug Level: "None" (or "Error" for debugging)
+
+ESP32 Board Version:
+--------------------
+For ESP-NOW: Any version 2.0.x or 3.x works
+For Mesh: MUST use version 2.0.x (painlessMesh not compatible with 3.x)
+
+To install specific version:
+Tools → Board → Boards Manager → Search "ESP32"
+→ Click dropdown → Select version 2.0.17 → Install
+
+
+LIBRARY REQUIREMENTS
+====================
+
+ESP-NOW Implementation:
+-----------------------
+No additional libraries needed (built into ESP32 core)
+
+Mesh Implementation:
+--------------------
+Required libraries (install via Library Manager):
+1. painlessMesh (version 1.5.0 or later)
+2. ArduinoJson (version 6.x)
+3. TaskScheduler (version 3.x)
+
+SD Card Support:
+----------------
+No additional libraries needed (built into ESP32 core)
+
+
+STEP-BY-STEP SETUP GUIDE
+=========================
+
+OPTION 1: ESP-NOW Setup
+------------------------
+
+Step 1: Find MAC Addresses
+   a. Open: Pre-release/find_MAC-address/find_MAC-address.ino
+   b. Upload to receiver ESP32
+   c. Open Serial Monitor (115200 baud)
+   d. Note the MAC address (format: XX:XX:XX:XX:XX:XX)
+   e. Repeat for transmitter if needed
+
+Step 2: Configure Transmitter
+   a. Open: Testing/NOW/send_one_picture/send_one_picture.ino
+   b. Find line 18:
+      uint8_t receiverAddress[] = {0xA4, 0xCF, 0x12, 0x9B, 0x7E, 0x23};
+   c. Replace with your receiver's MAC address
+   d. Save file
+
+Step 3: Upload Receiver Code
+   a. Open: Testing/NOW/receive_one_picture/receive_one_picture.ino
+   b. Select correct board (ESP32 Dev Module)
+   c. Select correct COM port
+   d. Click Upload
+   e. Wait for "Done uploading"
+
+Step 4: Upload Transmitter Code
+   a. Connect ESP32-CAM to programmer
+   b. Connect GPIO 0 to GND (programming mode)
+   c. Select board: "AI Thinker ESP32-CAM"
+   d. Select correct COM port
+   e. Click Upload
+   f. After upload, disconnect GPIO 0 from GND
+   g. Press RESET button
+
+Step 5: Test
+   a. Open Serial Monitor for both devices (115200 baud)
+   b. Reset ESP32-CAM
+   c. Watch image transfer progress on both serial monitors
+
+
+OPTION 2: Mesh Network Setup
+-----------------------------
+
+Step 1: Install Libraries
+   a. Tools → Manage Libraries
+   b. Search "painlessMesh" → Install
+   c. Search "ArduinoJson" → Install (if not auto-installed)
+   d. Search "TaskScheduler" → Install (if not auto-installed)
+
+Step 2: Verify ESP32 Board Version
+   a. Tools → Board → Boards Manager
+   b. Search "ESP32"
+   c. Check version (must be 2.0.x)
+   d. If 3.x installed, uninstall and install 2.0.17
+
+Step 3: Configure Mesh Credentials (Optional)
+   Both files must have matching credentials:
+   
+   In Testing/Mesh/send_one_picture/send_one_picture.ino:
+   #define MESH_PREFIX     "CrackSensorMesh"
+   #define MESH_PASSWORD   "CrackSensor2024"
+   #define MESH_PORT       5555
+   
+   In Testing/Mesh/receive_one_picture/receive_one_picture.ino:
+   (Same values as above)
+
+Step 4: Upload Receiver Code
+   a. Open: Testing/Mesh/receive_one_picture/receive_one_picture.ino
+   b. Select board: "ESP32 Dev Module"
+   c. Upload to receiver ESP32
+   
+Step 5: Upload Transmitter Code
+   a. Open: Testing/Mesh/send_one_picture/send_one_picture.ino
+   b. Select board: "AI Thinker ESP32-CAM"
+   c. Connect GPIO 0 to GND
+   d. Upload to ESP32-CAM
+   e. Disconnect GPIO 0, press RESET
+
+Step 6: Test
+   a. Open Serial Monitor for both (115200 baud)
+   b. Wait 10 seconds for mesh to form
+   c. Watch for "New connection" messages
+   d. Image transfer should begin automatically
+
+
+TROUBLESHOOTING COMMON ISSUES
+==============================
+
+Camera Issues:
+--------------
+Problem: "Camera init failed with error 0x105"
+Solution: 
+  - Check board selection (must be "AI Thinker ESP32-CAM")
+  - Verify partition scheme (Huge APP 3MB)
+  - Try power cycle
+
+Problem: "Brownout detector was triggered"
+Solution:
+  - Use external 5V 2A power supply
+  - Don't power from USB-serial adapter
+  - Use shorter/thicker power cables
+
+Problem: "PSRAM not found"
+Solution:
+  - AI-THINKER has PSRAM, but check module
+  - Reduce frame size to QVGA or VGA
+  - Reduce JPEG quality number (higher value)
+
+
+ESP-NOW Issues:
+---------------
+Problem: "Failed to add peer"
+Solution:
+  - Verify MAC address format (comma-separated hex)
+  - Check all 6 bytes are present
+  - Use 0x prefix for each byte
+
+Problem: "Delivery Fail" in serial output
+Solution:
+  - Ensure receiver is powered and running
+  - Reduce distance between devices (< 10m for testing)
+  - Check both devices on same WiFi channel
+  - Verify receiver MAC address is correct
+
+Problem: Many packets lost
+Solution:
+  - Reduce image size/quality
+  - Decrease MAX_PACKET_SIZE to 200
+  - Add delay between packets (increase from 5ms to 10ms)
+
+
+Mesh Issues:
+------------
+Problem: "Error initializing painlessMesh"
+Solution:
+  - Verify ESP32 board version is 2.0.x (NOT 3.x)
+  - Check all required libraries installed
+  - Clear Arduino cache (delete AppData\Local\Arduino15\cache)
+
+Problem: Nodes not connecting
+Solution:
+  - Verify MESH_PREFIX matches exactly (case-sensitive)
+  - Check MESH_PASSWORD matches
+  - Ensure MESH_PORT is same on all devices
+  - Wait 10-20 seconds for mesh formation
+  - Check Serial Monitor for error messages
+
+Problem: "Out of memory" or crashes
+Solution:
+  - Reduce CHUNK_SIZE (e.g., from 1000 to 500)
+  - Lower image quality (increase jpeg_quality value)
+  - Use smaller frame size (VGA instead of SVGA)
+
+Problem: Missing chunks in image
+Solution:
+  - Increase delay between chunks (taskSendChunk interval)
+  - Reduce mesh network traffic
+  - Ensure good signal strength between nodes
+
+
+Upload Issues:
+--------------
+Problem: "Failed to connect to ESP32"
+Solution:
+  - Connect GPIO 0 to GND before upload
+  - Press RESET while clicking Upload
+  - Try slower upload speed (115200)
+  - Check COM port selection
+  - Verify USB cable has data lines (not just power)
+
+Problem: "Timed out waiting for packet header"
+Solution:
+  - Press and hold BOOT button
+  - Click Upload
+  - Keep BOOT pressed until "Connecting..." appears
+  - Release BOOT button
+
+
+Memory Issues:
+--------------
+Problem: "Sketch too big"
+Solution:
+  - Change partition scheme to "Huge APP (3MB)"
+  - Remove unnecessary code/comments
+  - Disable debug messages
+
+Problem: Crashes after several images
+Solution:
+  - Memory leak in image buffer
+  - Ensure free() called after each image
+  - Reduce image size
+  - Add delay between captures
+
+
+PERFORMANCE OPTIMIZATION
+========================
+
+For Faster Transfer (ESP-NOW):
+-------------------------------
+1. Increase MAX_PACKET_SIZE to 245
+2. Decrease delay between packets to 3ms
+3. Use lower JPEG quality (higher number)
+4. Use smaller frame size
+
+For More Reliable Transfer:
+----------------------------
+1. Decrease MAX_PACKET_SIZE to 200
+2. Increase delay between packets to 10ms
+3. Add retry logic for failed packets
+4. Use acknowledgment system
+
+For Better Image Quality:
+--------------------------
+1. Increase frame size (SVGA, XGA)
+2. Lower JPEG quality number (8-12)
+3. Ensure good lighting
+4. Adjust camera sensor settings
+
+For Longer Range:
+------------------
+1. Use external antenna on ESP32
+2. Orient antennas perpendicular to each other
+3. Avoid obstacles and interference
+4. For Mesh: use relay nodes
+
+
+WIRING REFERENCE
+================
+
+ESP32-CAM Programming (FTDI):
+-----------------------------
+FTDI    ESP32-CAM
+-----   ---------
+5V   →  5V
+GND  →  GND
+TX   →  U0R (RX)
+RX   →  U0T (TX)
+
+For Programming Mode:
+IO0  →  GND (connect before upload, remove after)
+
+For Running Mode:
+IO0  →  (leave disconnected)
+
+
+SD Card Wiring (Standard ESP32):
+---------------------------------
+SD Card   ESP32
+--------  -----
+CS     →  GPIO 5
+MOSI   →  GPIO 23
+CLK    →  GPIO 18
+MISO   →  GPIO 19
+VCC    →  3.3V
+GND    →  GND
+
+
+TESTING CHECKLIST
+=================
+
+Before Upload:
+□ Correct board selected
+□ Correct COM port selected
+□ Partition scheme: "Huge APP 3MB"
+□ Libraries installed (if using Mesh)
+□ MAC address configured (if using ESP-NOW)
+□ IO0 connected to GND (for ESP32-CAM upload)
+
+After Upload:
+□ Serial Monitor opened at 115200 baud
+□ IO0 disconnected from GND
+□ Device reset (press RESET button)
+□ "Initialized" messages appear
+□ No error messages in serial output
+
+For ESP-NOW:
+□ Receiver running and waiting
+□ MAC address correct in transmitter
+□ Both devices showing activity
+□ Packets being received
+
+For Mesh:
+□ "New connection" message appears
+□ Node IDs displayed
+□ Mesh formed (wait 10-20 seconds)
+□ No "connection failed" errors
+
+
+SUPPORT RESOURCES
+=================
+
+Hardware:
+- ESP32-CAM Datasheet: https://github.com/raphaelbs/esp32-cam-ai-thinker
+- ESP32 Pinout Reference: https://randomnerdtutorials.com/esp32-pinout-reference-gpios/
+
+Software:
+- ESP-NOW Documentation: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/network/esp_now.html
+- painlessMesh Library: https://gitlab.com/painlessMesh/painlessMesh
+- Arduino-ESP32: https://github.com/espressif/arduino-esp32
+
+Tutorials:
+- ESP32-CAM Setup: https://randomnerdtutorials.com/esp32-cam-video-streaming-face-recognition-arduino-ide/
+- ESP-NOW Tutorial: https://dronebotworkshop.com/esp-now/
+- painlessMesh Tutorial: https://randomnerdtutorials.com/esp-mesh-esp32-esp8266-painlessmesh/
+
+
+===============================================
+Last Updated: November 2025
+For: Crack Sensor Project
+===============================================
+

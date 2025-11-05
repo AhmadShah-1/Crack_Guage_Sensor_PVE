@@ -1,0 +1,314 @@
+╔══════════════════════════════════════════════════════════════╗
+║         ESP32-CAM IMAGE TRANSFER - QUICK START               ║
+║                    Choose Your Path                          ║
+╚══════════════════════════════════════════════════════════════╝
+
+═══════════════════════════════════════════════════════════════
+PATH A: ESP-NOW (FASTEST, POINT-TO-POINT)
+═══════════════════════════════════════════════════════════════
+
+☐ STEP 1: FIND MAC ADDRESSES (5 minutes)
+   1. Open: Pre-release/find_MAC-address/find_MAC-address.ino
+   2. Upload to receiver ESP32
+   3. Open Serial Monitor (115200 baud)
+   4. Write down MAC address: __ __ : __ __ : __ __ : __ __ : __ __ : __ __
+   5. Upload to transmitter ESP32-CAM
+   6. Write down MAC address: __ __ : __ __ : __ __ : __ __ : __ __ : __ __
+
+☐ STEP 2: CONFIGURE RECEIVER (5 minutes)
+   1. Open: Testing/NOW/receive_one_picture/receive_one_picture.ino
+   2. Select Board: "ESP32 Dev Module"
+   3. Select Port: COM__ (your receiver)
+   4. Click Upload
+   5. Wait for "Done uploading"
+   6. Open Serial Monitor
+   7. Verify "ESP-NOW initialized" appears
+
+☐ STEP 3: CONFIGURE TRANSMITTER (10 minutes)
+   1. Open: Testing/NOW/send_one_picture/send_one_picture.ino
+   2. Find Line 18: uint8_t receiverAddress[] = {...}
+   3. Replace with receiver's MAC from Step 1
+   4. Save file
+   5. Connect ESP32-CAM with IO0 → GND
+   6. Select Board: "AI Thinker ESP32-CAM"
+   7. Select Partition: "Huge APP (3MB No OTA)"
+   8. Click Upload
+   9. Remove IO0 → GND connection
+  10. Press RESET button
+
+☐ STEP 4: TEST (2 minutes)
+   1. Open Serial Monitor for transmitter (115200 baud)
+   2. Should see "Camera initialized"
+   3. Should see "ESP-NOW initialized"
+   4. Watch image capture and transfer
+   5. Check receiver Serial Monitor for "Image received"
+
+✓ DONE! Images transfer in ~3 seconds
+
+═══════════════════════════════════════════════════════════════
+PATH B: MESH NETWORK (EASIER SETUP, MULTI-NODE)
+═══════════════════════════════════════════════════════════════
+
+☐ STEP 1: INSTALL LIBRARIES (10 minutes)
+   1. Open Arduino IDE
+   2. Tools → Manage Libraries
+   3. Search "painlessMesh" → Install
+   4. Search "ArduinoJson" → Install (if not auto-installed)
+   5. Search "TaskScheduler" → Install (if not auto-installed)
+
+☐ STEP 2: CHECK ESP32 BOARD VERSION (5 minutes)
+   CRITICAL: Must be version 2.0.x (NOT 3.x)
+   1. Tools → Board → Boards Manager
+   2. Search "ESP32"
+   3. Check installed version
+   4. If version 3.x:
+      - Click "Remove"
+      - Select version 2.0.17 from dropdown
+      - Click "Install"
+
+☐ STEP 3: UPLOAD RECEIVER (5 minutes)
+   1. Open: Testing/Mesh/receive_one_picture/receive_one_picture.ino
+   2. Select Board: "ESP32 Dev Module"
+   3. Select Port: COM__ (your receiver)
+   4. Click Upload
+   5. Wait for "Done uploading"
+   6. Open Serial Monitor (115200 baud)
+   7. Note the Node ID displayed
+
+☐ STEP 4: UPLOAD TRANSMITTER (10 minutes)
+   1. Open: Testing/Mesh/send_one_picture/send_one_picture.ino
+   2. Connect ESP32-CAM with IO0 → GND
+   3. Select Board: "AI Thinker ESP32-CAM"
+   4. Select Partition: "Huge APP (3MB No OTA)"
+   5. Click Upload
+   6. Wait for "Done uploading"
+   7. Remove IO0 → GND connection
+   8. Press RESET button
+   9. Open Serial Monitor (115200 baud)
+  10. Note the Node ID displayed
+
+☐ STEP 5: WAIT FOR MESH FORMATION (20 seconds)
+   1. Watch both Serial Monitors
+   2. Should see "New connection" on both devices
+   3. Should see "Changed connections"
+   4. Wait for mesh to stabilize (10-20 seconds)
+
+☐ STEP 6: TEST (2 minutes)
+   1. Watch transmitter Serial Monitor
+   2. Should see image capture start after 5 seconds
+   3. Should see chunk transmission progress
+   4. Check receiver Serial Monitor
+   5. Should see chunks being received
+
+✓ DONE! Images transfer in ~8 seconds, no MAC config needed!
+
+═══════════════════════════════════════════════════════════════
+COMMON ISSUES & QUICK FIXES
+═══════════════════════════════════════════════════════════════
+
+Issue: "Camera init failed"
+Fix: □ Check board is "AI Thinker ESP32-CAM"
+     □ Check partition is "Huge APP (3MB)"
+     □ Try power cycle
+
+Issue: "Brownout detector was triggered"
+Fix: □ Use 5V 2A power supply (not USB)
+     □ Don't power from USB-serial adapter
+     □ Use shorter/thicker power cables
+
+Issue: "Failed to connect" during upload
+Fix: □ Connect IO0 to GND before upload
+     □ Press and hold RESET, click Upload
+     □ Check correct COM port selected
+     □ Try lower upload speed (115200)
+
+Issue: ESP-NOW "Delivery Fail"
+Fix: □ Verify receiver MAC address correct
+     □ Check receiver is powered and running
+     □ Reduce distance (< 10m for testing)
+     □ Reset both devices
+
+Issue: Mesh nodes not connecting
+Fix: □ VERIFY ESP32 board version 2.0.x
+     □ Check MESH_PREFIX/PASSWORD match
+     □ Wait 20 seconds after upload
+     □ Reset both devices simultaneously
+
+Issue: "Out of memory"
+Fix: □ Reduce image size (use VGA not SVGA)
+     □ Increase JPEG quality number (15-20)
+     □ Check partition scheme
+
+═══════════════════════════════════════════════════════════════
+WHICH METHOD TO CHOOSE?
+═══════════════════════════════════════════════════════════════
+
+Choose ESP-NOW if you need:
+✓ Fastest transfer speed (~3 seconds)
+✓ Low latency
+✓ Point-to-point communication
+✓ Fixed sensor locations
+
+Choose Mesh if you need:
+✓ Easy setup (no MAC addresses)
+✓ Multiple transmitters/receivers
+✓ Extended range (multi-hop)
+✓ Dynamic network topology
+✓ Self-healing network
+
+═══════════════════════════════════════════════════════════════
+YOUR DEVICE CONFIGURATION
+═══════════════════════════════════════════════════════════════
+
+From assests/MACaddress.csv:
+
+Device    MAC Address           Type        Use As
+------    -----------------     --------    ----------------
+R1        A4:CF:12:9B:7E:23    ESP-32      Main Receiver
+A_SR      A4:CF:12:58:D1:9A    ESP-32      Sub-Receiver
+A_T1      A4:CF:12:3C:AF:10    ESP32-CAM   Transmitter #1
+A_T2      A4:CF:12:E7:42:55    ESP32-CAM   Transmitter #2
+
+Suggested Setup:
+- R1: Upload receive_one_picture.ino (NOW or Mesh)
+- A_T1: Upload send_one_picture.ino (NOW or Mesh)
+- A_T2: Upload send_one_picture.ino (NOW or Mesh)
+- A_SR: Optional relay/sub-receiver
+
+═══════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════
+
+Before Declaring Success:
+
+ESP-NOW Testing:
+☐ Receiver shows MAC address on startup
+☐ Transmitter connects to receiver
+☐ Image capture completes
+☐ Progress shows 100% packets sent
+☐ Receiver displays "Valid JPEG image received"
+☐ No "Delivery Fail" messages
+☐ Transfer completes in < 5 seconds
+
+Mesh Testing:
+☐ Both devices show Node IDs
+☐ "New connection" message appears
+☐ Camera initializes successfully
+☐ Image capture completes
+☐ Start message received
+☐ Chunk progress reaches 100%
+☐ "All chunks received successfully"
+☐ "Valid JPEG image received"
+☐ Transfer completes in < 15 seconds
+
+═══════════════════════════════════════════════════════════════
+NEXT STEPS AFTER SUCCESS
+═══════════════════════════════════════════════════════════════
+
+Once basic transfer works:
+
+1. Adjust Image Quality
+   □ Edit frame_size (QVGA, VGA, SVGA, XGA)
+   □ Edit jpeg_quality (0-63, lower = better)
+   □ Test different settings
+
+2. Adjust Timing
+   □ Change capture interval
+   □ ESP-NOW: delay() in loop()
+   □ Mesh: CAPTURE_INTERVAL constant
+
+3. Add SD Card (ESP-NOW)
+   □ Use receive_and_save_SD.ino instead
+   □ Wire SD card to receiver
+   □ Images auto-saved to /images/
+
+4. Test Range
+   □ Start at 5 meters
+   □ Gradually increase distance
+   □ Note when failures start
+   □ For mesh: test multi-hop
+
+5. Multiple Devices
+   □ Add second transmitter
+   □ ESP-NOW: each needs receiver MAC
+   □ Mesh: automatically joins
+
+6. Add to Your Application
+   □ Integrate with crack detection
+   □ Add motion triggers
+   □ Implement processing
+   □ Add cloud upload
+
+═══════════════════════════════════════════════════════════════
+SERIAL MONITOR QUICK REFERENCE
+═══════════════════════════════════════════════════════════════
+
+Good Messages (No Action Needed):
+  ✓ "Camera initialized"
+  ✓ "ESP-NOW initialized" / "ESP-NOW init successful"
+  ✓ "Mesh network started"
+  ✓ "New connection"
+  ✓ "Image captured: X bytes"
+  ✓ "Progress: XX/XX packets"
+  ✓ "Transfer complete: XX/XX packets successful"
+  ✓ "Valid JPEG image received"
+
+Warning Messages (May Need Attention):
+  ⚠ "JPEG end marker not found" - Usually OK, image may still work
+  ⚠ "Packet failed: X" - Some packet loss, if only a few
+  ⚠ "Missing chunks: X" - Retry or reduce image size
+
+Error Messages (Action Required):
+  ✗ "Camera init failed" → Check board/partition
+  ✗ "Out of memory" → Reduce image size
+  ✗ "Failed to add peer" → Check MAC address
+  ✗ "Failed to initialize ESP-NOW" → Power cycle
+  ✗ "Brownout detected" → Better power supply
+  ✗ "Error initializing painlessMesh" → Check board version
+
+═══════════════════════════════════════════════════════════════
+DOCUMENTATION REFERENCE
+═══════════════════════════════════════════════════════════════
+
+File                          Purpose
+----                          -------
+Testing/README.md             Complete user guide
+Testing/configuration_guide   Detailed setup & troubleshooting
+Testing/PROJECT_SUMMARY.md    Technical overview
+Testing/NETWORK_DIAGRAMS.txt  Visual references
+Testing/QUICK_START.txt       This file
+
+Testing/NOW/README.md         ESP-NOW specific guide
+Testing/Mesh/README.md        Mesh network specific guide
+
+═══════════════════════════════════════════════════════════════
+SUPPORT
+═══════════════════════════════════════════════════════════════
+
+If you're stuck:
+1. Check configuration_guide.txt for troubleshooting
+2. Review Serial Monitor output for specific errors
+3. Verify all checkboxes above are completed
+4. Test with smaller image (QVGA) first
+5. Ensure adequate power supply (2A minimum)
+
+Common beginner mistakes:
+× Using wrong board selection
+× Forgetting to change partition scheme
+× Not connecting IO0 to GND for upload
+× Insufficient power supply
+× Wrong MAC address in ESP-NOW
+× ESP32 board version 3.x with Mesh
+
+═══════════════════════════════════════════════════════════════
+
+Ready to start? Pick your path (A or B) above and follow the steps!
+
+Total time to first image:
+- ESP-NOW: ~20 minutes
+- Mesh: ~30 minutes (due to library installation)
+
+Good luck! 📸
+
+═══════════════════════════════════════════════════════════════
+

@@ -1,0 +1,17 @@
+Device Numbers that start with 
+- R are recievers
+- SR are subrecievers
+- T are transmitters
+
+furthermore any SRs can be used with any R, however selected Ts can work with SR, to indicate which Ts work with which SRs, 
+both shall be suffixed with a letter for example
+
+R1
+
+A_SR
+A_T1
+A_T2
+
+B_SR
+B_T1
+B_T2

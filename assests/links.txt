@@ -1,0 +1,28 @@
+Lucidchart:
+https://lucid.app/lucidchart/3a7aba10-8f47-4334-acf2-6c7f58980fc8/edit?invitationId=inv_11b53052-4979-4d42-977e-2e70e8b7e1ef&page=Bt73CT1eaUzF#
+
+Constraint Analysis:
+https://docs.google.com/document/d/1oyxux1wEqPBSZ44OMDucb1xFy6jRdI9cEIbwHprctSQ/edit?usp=sharing
+
+esp32-cam guide:
+https://www.bing.com/videos/riverview/relatedvideo?q=ESP32-CAM+setup&&mid=F7040F032D74DA11E9CBF7040F032D74DA11E9CB&FORM=VCGVRP
+
+
+
+Mesh Networking (Not sure if its good yet):
+https://www.youtube.com/watch?v=gf39MLqPGkQ
+
+
+ESP-NOW:
+https://www.youtube.com/watch?v=bEKjCDDUPaU
+https://dronebotworkshop.com/esp-now/
+
+
+ESP Mesh:
+https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-guides/esp-wifi-mesh.html
+
+These features may be useful in requesting RSSI of each node to calculate the position of every node
+Group Control & Multicasting
+Broadcasting
+
+https://randomnerdtutorials.com/esp-mesh-esp32-esp8266-painlessmesh/

@@ -34,6 +34,8 @@
 #define DATA_PACKET_SIZE 230
 #define MESH_CHUNK_SIZE 1000
 #define MAX_CAMERAS 4  // Maximum simultaneous camera receptions
+#define MESH_MAX_RETRIES 3  // Retry attempts for mesh transmission
+#define MESH_RETRY_DELAY 50  // Delay between retries (ms)
  
 // ===========================
 // ESP-NOW Packet Structure (must match transmitter)
@@ -254,6 +256,31 @@ void OnDataRecv(const esp_now_recv_info *recv_info, const uint8_t *incomingData,
 }
  
 // ===========================
+// Send Mesh Message with Retry
+// ===========================
+bool sendMeshMessageWithRetry(String &message, const char* messageType) {
+  for (int retry = 0; retry < MESH_MAX_RETRIES; retry++) {
+    bool success = mesh.sendBroadcast(message);
+    
+    if (success) {
+      return true;
+    }
+    
+    // Failed, retry
+    if (retry < MESH_MAX_RETRIES - 1) {
+      Serial.printf("[%s] Mesh send failed for %s (attempt %d/%d), retrying...\n",
+                    SUBRECEIVER_ID, messageType, retry + 1, MESH_MAX_RETRIES);
+      delay(MESH_RETRY_DELAY);
+    }
+  }
+  
+  // All retries failed
+  Serial.printf("[%s] ERROR: Failed to send %s after %d attempts\n",
+                SUBRECEIVER_ID, messageType, MESH_MAX_RETRIES);
+  return false;
+}
+
+// ===========================
 // Forward Image to Mesh Network
 // ===========================
 void forwardImageToMesh(ImageBuffer &buffer) {
@@ -269,12 +296,17 @@ void forwardImageToMesh(ImageBuffer &buffer) {
   startMsg["subreceiver_id"] = SUBRECEIVER_ID;
   startMsg["size"] = (int)buffer.size;
   startMsg["chunks"] = totalChunks;
- 
+
   String startStr = JSON.stringify(startMsg);
-  mesh.sendBroadcast(startStr);
+  if (!sendMeshMessageWithRetry(startStr, "START")) {
+    Serial.printf("[%s] FATAL: Could not send start message for %s\n",
+                  SUBRECEIVER_ID, buffer.cameraID);
+    return;
+  }
   delay(50);  // Small delay for message processing
  
-  // Send data chunks
+  // Send data chunks with retry
+  int failedChunks = 0;
   for (uint16_t i = 0; i < totalChunks; i++) {
     uint32_t offset = i * MESH_CHUNK_SIZE;
     uint16_t chunkLen = min((uint16_t)MESH_CHUNK_SIZE, (uint16_t)(buffer.size - offset));
@@ -298,13 +330,21 @@ void forwardImageToMesh(ImageBuffer &buffer) {
     chunkMsg["data"] = hexData;
    
     String chunkStr = JSON.stringify(chunkMsg);
-    mesh.sendBroadcast(chunkStr);
+    
+    // Send with retry
+    char chunkLabel[20];
+    sprintf(chunkLabel, "CHUNK_%d", i);
+    if (!sendMeshMessageWithRetry(chunkStr, chunkLabel)) {
+      failedChunks++;
+      Serial.printf("[%s] WARNING: Chunk %d failed after all retries\n",
+                    SUBRECEIVER_ID, i);
+    }
    
     // Progress
     if ((i + 1) % 5 == 0 || (i + 1) == totalChunks) {
-      Serial.printf("[%s] Mesh forward: %d/%d chunks (%.1f%%)\n",
+      Serial.printf("[%s] Mesh forward: %d/%d chunks (%.1f%%) - %d failed\n",
                     SUBRECEIVER_ID, i + 1, totalChunks,
-                    ((i + 1) * 100.0) / totalChunks);
+                    ((i + 1) * 100.0) / totalChunks, failedChunks);
     }
    
     delay(20);  // Delay between chunks for mesh stability
@@ -316,11 +356,20 @@ void forwardImageToMesh(ImageBuffer &buffer) {
   endMsg["camera_id"] = buffer.cameraID;
   endMsg["subreceiver_id"] = SUBRECEIVER_ID;
   endMsg["chunks"] = totalChunks;
- 
+
   String endStr = JSON.stringify(endMsg);
-  mesh.sendBroadcast(endStr);
- 
-  Serial.printf("[%s] Forward complete for %s\n", SUBRECEIVER_ID, buffer.cameraID);
+  if (!sendMeshMessageWithRetry(endStr, "END")) {
+    Serial.printf("[%s] ERROR: Could not send end message for %s\n",
+                  SUBRECEIVER_ID, buffer.cameraID);
+  }
+
+  if (failedChunks > 0) {
+    Serial.printf("[%s] Forward complete for %s with %d failed chunks (may have missing data)\n",
+                  SUBRECEIVER_ID, buffer.cameraID, failedChunks);
+  } else {
+    Serial.printf("[%s] Forward complete for %s - all chunks sent successfully\n",
+                  SUBRECEIVER_ID, buffer.cameraID);
+  }
 }
  
 // ===========================

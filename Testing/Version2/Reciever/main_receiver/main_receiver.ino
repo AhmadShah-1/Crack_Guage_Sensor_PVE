@@ -1,28 +1,32 @@
 /*
-  ESP32 Main Receiver
-  For Hybrid ESP-NOW + Mesh Architecture
-  
-  Receives images from Sub-Receivers via painlessMesh
-  Outputs structured data to Serial for Raspberry Pi
-  
-  Note: Use ESP32 board version 2.0.x for painlessMesh compatibility
+ESP32 Main Receiver
+For Hybrid ESP-NOW + Mesh Architecture
+
+Receives images from Sub-Receivers via painlessMesh
+Outputs structured data to Serial for Raspberry Pi
+
+Note: Use ESP32 board version 2.0.x for painlessMesh compatibility
+
+
 */
+
+
 
 #include "painlessMesh.h"
 #include <Arduino_JSON.h>
-
+  
 // ===========================
 // Mesh Network Configuration
 // ===========================
 #define MESH_PREFIX     "CrackSensorMesh"
 #define MESH_PASSWORD   "CrackSensor2024"
 #define MESH_PORT       5555
-
+  
 // ===========================
 // Configuration
 // ===========================
 #define MAX_IMAGES 4  // Maximum simultaneous image receptions
-
+  
 // ===========================
 // Image Reception Structure
 // ===========================
@@ -38,14 +42,14 @@ struct ImageReception {
   unsigned long startTime;
   unsigned long lastChunkTime;
 };
-
+  
 ImageReception imageReceptions[MAX_IMAGES];
-
+  
 Scheduler userScheduler;
 painlessMesh mesh;
-
+  
 #define TIMEOUT_MS 10000  // 10 second timeout
-
+  
 // ===========================
 // Initialize Image Reception
 // ===========================
@@ -61,7 +65,7 @@ void initReception(ImageReception &reception) {
   reception.startTime = 0;
   reception.lastChunkTime = 0;
 }
-
+  
 // ===========================
 // Free Image Reception
 // ===========================
@@ -76,14 +80,14 @@ void freeReception(ImageReception &reception) {
   }
   initReception(reception);
 }
-
+  
 // ===========================
 // Get Reception Slot for Camera
 // ===========================
 ImageReception* getReceptionSlot(const char* cameraID, const char* subreceiverID) {
   // Check if already receiving from this camera
   for (int i = 0; i < MAX_IMAGES; i++) {
-    if (imageReceptions[i].receiving && 
+    if (imageReceptions[i].receiving &&
         strcmp(imageReceptions[i].cameraID, cameraID) == 0) {
       return &imageReceptions[i];
     }
@@ -99,7 +103,7 @@ ImageReception* getReceptionSlot(const char* cameraID, const char* subreceiverID
   Serial.println("[R1] WARNING: No free reception slot");
   return NULL;
 }
-
+  
 // ===========================
 // Process Start Message
 // ===========================
@@ -133,7 +137,7 @@ void processStartMessage(JSONVar data) {
   reception->chunkReceived = (bool *)calloc(chunks, sizeof(bool));
   
   if (reception->data == NULL || reception->chunkReceived == NULL) {
-    Serial.printf("[R1] ERROR: Failed to allocate memory for %s from %s\n", 
+    Serial.printf("[R1] ERROR: Failed to allocate memory for %s from %s\n",
                   cameraID, subreceiverID);
     freeReception(*reception);
     return;
@@ -147,7 +151,7 @@ void processStartMessage(JSONVar data) {
   Serial.printf("[R1] Size: %d bytes\n", size);
   Serial.printf("[R1] Chunks: %d\n", chunks);
 }
-
+  
 // ===========================
 // Process Chunk Message
 // ===========================
@@ -159,7 +163,7 @@ void processChunkMessage(JSONVar data) {
   // Find reception
   ImageReception *reception = NULL;
   for (int i = 0; i < MAX_IMAGES; i++) {
-    if (imageReceptions[i].receiving && 
+    if (imageReceptions[i].receiving &&
         strcmp(imageReceptions[i].cameraID, cameraID) == 0) {
       reception = &imageReceptions[i];
       break;
@@ -200,12 +204,12 @@ void processChunkMessage(JSONVar data) {
   // Progress
   if (reception->chunksReceived % 5 == 0 || reception->chunksReceived == reception->totalChunks) {
     Serial.printf("[R1] %s: %d/%d chunks (%.1f%%)\n",
-                  reception->cameraID, reception->chunksReceived, 
+                  reception->cameraID, reception->chunksReceived,
                   reception->totalChunks,
                   (reception->chunksReceived * 100.0) / reception->totalChunks);
   }
 }
-
+  
 // ===========================
 // Process End Message
 // ===========================
@@ -215,7 +219,7 @@ void processEndMessage(JSONVar data) {
   // Find reception
   ImageReception *reception = NULL;
   for (int i = 0; i < MAX_IMAGES; i++) {
-    if (imageReceptions[i].receiving && 
+    if (imageReceptions[i].receiving &&
         strcmp(imageReceptions[i].cameraID, cameraID) == 0) {
       reception = &imageReceptions[i];
       break;
@@ -231,7 +235,7 @@ void processEndMessage(JSONVar data) {
   Serial.printf("\n[R1] === Reception Complete ===\n");
   Serial.printf("[R1] Camera: %s\n", reception->cameraID);
   Serial.printf("[R1] Sub-receiver: %s\n", reception->subreceiverID);
-  Serial.printf("[R1] Received: %d/%d chunks\n", 
+  Serial.printf("[R1] Received: %d/%d chunks\n",
                 reception->chunksReceived, reception->totalChunks);
   Serial.printf("[R1] Transfer time: %lu ms\n", transferTime);
   
@@ -255,7 +259,7 @@ void processEndMessage(JSONVar data) {
   // Free reception
   freeReception(*reception);
 }
-
+  
 // ===========================
 // Output Image to Serial (for Raspberry Pi)
 // ===========================
@@ -288,7 +292,7 @@ void outputImageToSerial(ImageReception &reception) {
   
   Serial.printf("[R1] Image data sent to serial (%d bytes)\n", reception.size);
 }
-
+  
 // ===========================
 // Check for Timeouts
 // ===========================
@@ -296,7 +300,7 @@ void checkTimeouts() {
   unsigned long now = millis();
   
   for (int i = 0; i < MAX_IMAGES; i++) {
-    if (imageReceptions[i].receiving && 
+    if (imageReceptions[i].receiving &&
         (now - imageReceptions[i].lastChunkTime > TIMEOUT_MS)) {
       Serial.printf("[R1] Timeout: %s from %s (%d/%d chunks)\n",
                     imageReceptions[i].cameraID,
@@ -307,7 +311,7 @@ void checkTimeouts() {
     }
   }
 }
-
+  
 // ===========================
 // Mesh Receive Callback
 // ===========================
@@ -328,20 +332,20 @@ void receivedCallback(uint32_t from, String &msg) {
     processEndMessage(data);
   }
 }
-
+  
 void newConnectionCallback(uint32_t nodeId) {
   Serial.printf("[R1] Mesh: New connection %u\n", nodeId);
 }
-
+  
 void changedConnectionCallback() {
   Serial.printf("[R1] Mesh: Connections changed\n");
   Serial.printf("[R1] Mesh: %d nodes connected\n", mesh.getNodeList().size());
 }
-
+  
 void nodeTimeAdjustedCallback(int32_t offset) {
   // Time sync
 }
-
+  
 // ===========================
 // Setup
 // ===========================
@@ -371,7 +375,7 @@ void setup() {
   Serial.println("[R1] Waiting for images from sub-receivers...");
   Serial.println("========================================\n");
 }
-
+  
 // ===========================
 // Loop
 // ===========================
@@ -380,4 +384,3 @@ void loop() {
   checkTimeouts();
   delay(10);
 }
-

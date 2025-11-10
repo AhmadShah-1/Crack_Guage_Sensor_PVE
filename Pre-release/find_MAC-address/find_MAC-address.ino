@@ -17,7 +17,8 @@ void setup() {
  
   // Put ESP32 into Station mode
   WiFi.mode(WIFI_MODE_STA);
- 
+  WiFi.begin();
+  
   // Print MAC Address to Serial monitor
   Serial.print("MAC Address: ");
   Serial.println(WiFi.macAddress());

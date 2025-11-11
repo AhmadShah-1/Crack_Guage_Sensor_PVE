@@ -39,6 +39,7 @@ uint8_t subReceiverMAC[] = {0x4C, 0xC3, 0x82, 0xC0, 0x3B, 0x6C};
 #define CAPTURE_INTERVAL 10000   // 10 seconds between captures
 #define MAX_RETRIES 5            // Maximum retries per packet
 #define INTER_PACKET_DELAY 10    // Delay between packets (ms)
+#define WIFI_PROTOCOL_MASK (WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N | WIFI_PROTOCOL_LR)
  
 // ===========================
 // ESP-NOW Packet Structure
@@ -63,9 +64,8 @@ unsigned long lastCaptureTime = 0;
 // ===========================
 // Callback when data is sent
 // ===========================
-// Note: Signature varies by ESP32 core version
-// For ESP32 core 3.x+ (IDF 5.x)
-void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
+// Note: Signature varies by ESP32 core version. ESP32 core 2.x (IDF 4.x) uses the MAC pointer form.
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
   if (status == ESP_NOW_SEND_SUCCESS) {
     lastPacketResult = 1; // Success
     successCount++;
@@ -268,17 +268,20 @@ void setup() {
 
   Serial.printf("[%s] ESP-NOW initialized\n", DEVICE_ID);
 
-  // Enable LR (Long Range) mode AFTER ESP-NOW init
-  esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR);
-  
-  // Verify LR mode is active
-  uint8_t protocol;
-  esp_wifi_get_protocol(WIFI_IF_STA, &protocol);
-  if (protocol & WIFI_PROTOCOL_LR) {
-    Serial.printf("[%s] LR mode CONFIRMED active\n", DEVICE_ID);
+  // Enable combined Wi-Fi protocols (11b/g/n + LR) AFTER ESP-NOW init
+  if (esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_MASK) == ESP_OK) {
+    Serial.printf("[%s] WiFi STA protocols set to 11b/g/n + LR\n", DEVICE_ID);
   } else {
-    Serial.printf("[%s] WARNING: LR mode NOT active! Protocol: 0x%02X\n", DEVICE_ID, protocol);
+    Serial.printf("[%s] WARNING: Failed to set WiFi protocol mask\n", DEVICE_ID);
   }
+
+  // Verify LR mode is active alongside standard PHYs
+  uint8_t protocol = 0;
+  esp_wifi_get_protocol(WIFI_IF_STA, &protocol);
+  Serial.printf("[%s] STA protocol bitmap: 0x%02X (LR %s)\n",
+                DEVICE_ID,
+                protocol,
+                (protocol & WIFI_PROTOCOL_LR) ? "enabled" : "disabled");
  
   // Register send callback
   esp_now_register_send_cb(OnDataSent);

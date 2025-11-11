@@ -427,10 +427,6 @@ void setup() {
   // Set WiFi to Station mode
   WiFi.mode(WIFI_STA);
 
-  // Enable LR (Long Range) mode for extended range
-  esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR);
-  Serial.printf("[%s] LR (Long Range) mode enabled\n", SUBRECEIVER_ID);
-
   // Print MAC Address
   Serial.printf("[%s] MAC Address: %s\n", SUBRECEIVER_ID, WiFi.macAddress().c_str());
 
@@ -455,19 +451,6 @@ void setup() {
 
   Serial.printf("[%s] Mesh initialized\n", SUBRECEIVER_ID);
   Serial.printf("[%s] Mesh Node ID: %u\n", SUBRECEIVER_ID, mesh.getNodeId());
-
-  // Re-enable LR mode after mesh init (mesh.init() resets WiFi protocol)
-  delay(100);  // Let mesh stabilize
-  esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR);
-  
-  // Verify LR mode is active
-  uint8_t protocol;
-  esp_wifi_get_protocol(WIFI_IF_STA, &protocol);
-  if (protocol & WIFI_PROTOCOL_LR) {
-    Serial.printf("[%s] LR mode CONFIRMED active after mesh init\n", SUBRECEIVER_ID);
-  } else {
-    Serial.printf("[%s] WARNING: LR mode NOT active! Protocol: 0x%02X\n", SUBRECEIVER_ID, protocol);
-  }
   Serial.println("========================================");
   Serial.printf("[%s] Ready to receive from cameras and forward to mesh\n", SUBRECEIVER_ID);
   Serial.println("========================================\n");

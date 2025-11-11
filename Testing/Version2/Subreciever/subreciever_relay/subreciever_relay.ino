@@ -129,8 +129,8 @@ ImageBuffer* getBufferForCamera(const char* cameraID) {
 // ===========================
 // ESP-NOW Receive Callback
 // ===========================
-// Note: For ESP32 core 3.x+ (IDF 5.x)
-void OnDataRecv(const esp_now_recv_info *recv_info, const uint8_t *incomingData, int len) {
+// Note: For ESP32 core 2.0.x (required for painlessMesh compatibility)
+void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
   esp_now_packet receivedPacket;
   memcpy(&receivedPacket, incomingData, sizeof(receivedPacket));
  

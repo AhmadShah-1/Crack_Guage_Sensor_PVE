@@ -11,6 +11,7 @@
  
 #include <esp_now.h>
 #include <WiFi.h>
+#include "esp_wifi.h"
 #include "esp_camera.h"
  
 // ===========================
@@ -255,17 +256,29 @@ void setup() {
  
   // Set WiFi to Station mode
   WiFi.mode(WIFI_STA);
- 
+
   // Print MAC Address
   Serial.printf("[%s] MAC Address: %s\n", DEVICE_ID, WiFi.macAddress().c_str());
- 
+
   // Initialize ESP-NOW
   if (esp_now_init() != ESP_OK) {
     Serial.printf("[%s] FATAL: ESP-NOW init failed!\n", DEVICE_ID);
     while (1) delay(1000);
   }
- 
+
   Serial.printf("[%s] ESP-NOW initialized\n", DEVICE_ID);
+
+  // Enable LR (Long Range) mode AFTER ESP-NOW init
+  esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR);
+  
+  // Verify LR mode is active
+  uint8_t protocol;
+  esp_wifi_get_protocol(WIFI_IF_STA, &protocol);
+  if (protocol & WIFI_PROTOCOL_LR) {
+    Serial.printf("[%s] LR mode CONFIRMED active\n", DEVICE_ID);
+  } else {
+    Serial.printf("[%s] WARNING: LR mode NOT active! Protocol: 0x%02X\n", DEVICE_ID, protocol);
+  }
  
   // Register send callback
   esp_now_register_send_cb(OnDataSent);

@@ -13,6 +13,7 @@
  
 #include <esp_now.h>
 #include <WiFi.h>
+#include "esp_wifi.h"
 #include "painlessMesh.h"
 #include <Arduino_JSON.h>
  
@@ -425,10 +426,14 @@ void setup() {
  
   // Set WiFi to Station mode
   WiFi.mode(WIFI_STA);
- 
+
+  // Enable LR (Long Range) mode for extended range
+  esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR);
+  Serial.printf("[%s] LR (Long Range) mode enabled\n", SUBRECEIVER_ID);
+
   // Print MAC Address
   Serial.printf("[%s] MAC Address: %s\n", SUBRECEIVER_ID, WiFi.macAddress().c_str());
- 
+
   // Initialize ESP-NOW first
   if (esp_now_init() != ESP_OK) {
     Serial.printf("[%s] FATAL: ESP-NOW init failed!\n", SUBRECEIVER_ID);
@@ -447,9 +452,22 @@ void setup() {
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
- 
+
   Serial.printf("[%s] Mesh initialized\n", SUBRECEIVER_ID);
   Serial.printf("[%s] Mesh Node ID: %u\n", SUBRECEIVER_ID, mesh.getNodeId());
+
+  // Re-enable LR mode after mesh init (mesh.init() resets WiFi protocol)
+  delay(100);  // Let mesh stabilize
+  esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_LR);
+  
+  // Verify LR mode is active
+  uint8_t protocol;
+  esp_wifi_get_protocol(WIFI_IF_STA, &protocol);
+  if (protocol & WIFI_PROTOCOL_LR) {
+    Serial.printf("[%s] LR mode CONFIRMED active after mesh init\n", SUBRECEIVER_ID);
+  } else {
+    Serial.printf("[%s] WARNING: LR mode NOT active! Protocol: 0x%02X\n", SUBRECEIVER_ID, protocol);
+  }
   Serial.println("========================================");
   Serial.printf("[%s] Ready to receive from cameras and forward to mesh\n", SUBRECEIVER_ID);
   Serial.println("========================================\n");

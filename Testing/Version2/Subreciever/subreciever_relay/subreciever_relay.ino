@@ -13,7 +13,6 @@
  
 #include <esp_now.h>
 #include <WiFi.h>
-#include "esp_wifi.h"
 #include "painlessMesh.h"
 #include <Arduino_JSON.h>
  
@@ -129,8 +128,8 @@ ImageBuffer* getBufferForCamera(const char* cameraID) {
 // ===========================
 // ESP-NOW Receive Callback
 // ===========================
-// Note: For ESP32 core 2.0.x (required for painlessMesh compatibility)
-void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
+// Note: For ESP32 core 3.x+ (IDF 5.x)
+void OnDataRecv(const esp_now_recv_info *recv_info, const uint8_t *incomingData, int len) {
   esp_now_packet receivedPacket;
   memcpy(&receivedPacket, incomingData, sizeof(receivedPacket));
  
@@ -297,7 +296,7 @@ void forwardImageToMesh(ImageBuffer &buffer) {
   startMsg["subreceiver_id"] = SUBRECEIVER_ID;
   startMsg["size"] = (int)buffer.size;
   startMsg["chunks"] = totalChunks;
-
+ 
   String startStr = JSON.stringify(startMsg);
   if (!sendMeshMessageWithRetry(startStr, "START")) {
     Serial.printf("[%s] FATAL: Could not send start message for %s\n",
@@ -357,13 +356,13 @@ void forwardImageToMesh(ImageBuffer &buffer) {
   endMsg["camera_id"] = buffer.cameraID;
   endMsg["subreceiver_id"] = SUBRECEIVER_ID;
   endMsg["chunks"] = totalChunks;
-
+ 
   String endStr = JSON.stringify(endMsg);
   if (!sendMeshMessageWithRetry(endStr, "END")) {
     Serial.printf("[%s] ERROR: Could not send end message for %s\n",
                   SUBRECEIVER_ID, buffer.cameraID);
   }
-
+ 
   if (failedChunks > 0) {
     Serial.printf("[%s] Forward complete for %s with %d failed chunks (may have missing data)\n",
                   SUBRECEIVER_ID, buffer.cameraID, failedChunks);
@@ -426,10 +425,10 @@ void setup() {
  
   // Set WiFi to Station mode
   WiFi.mode(WIFI_STA);
-
+ 
   // Print MAC Address
   Serial.printf("[%s] MAC Address: %s\n", SUBRECEIVER_ID, WiFi.macAddress().c_str());
-
+ 
   // Initialize ESP-NOW first
   if (esp_now_init() != ESP_OK) {
     Serial.printf("[%s] FATAL: ESP-NOW init failed!\n", SUBRECEIVER_ID);
@@ -448,7 +447,7 @@ void setup() {
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
-
+ 
   Serial.printf("[%s] Mesh initialized\n", SUBRECEIVER_ID);
   Serial.printf("[%s] Mesh Node ID: %u\n", SUBRECEIVER_ID, mesh.getNodeId());
   Serial.println("========================================");

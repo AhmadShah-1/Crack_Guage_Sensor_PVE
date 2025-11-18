@@ -1,0 +1,10 @@
+{
+  "client_id": "fa9a22cb-1fe3-4a84-b57a-60896cf1e76e",
+  "tenant_id": "common",
+  "authority": "https://login.microsoftonline.com/common",
+  "scope": ["Files.Read.All"],
+  "share_link": "https://1drv.ms/f/c/a2c7444680a5045e/EouB0aaaQVBDquA2aO6-zYsBv4v6jHWdkfgtBwPwjeKVUw",
+  "cache_expiry_minutes": 15,
+  "_comment": "Share link should be the full OneDrive URL (query parameters like ?e=xxx are automatically stripped)"
+}
+

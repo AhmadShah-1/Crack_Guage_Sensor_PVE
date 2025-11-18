@@ -14,6 +14,7 @@ Note: Use ESP32 board version 2.0.x for painlessMesh compatibility
 
 #include "painlessMesh.h"
 #include <Arduino_JSON.h>
+#include "esp_wifi.h"
   
 // ===========================
 // Mesh Network Configuration
@@ -26,6 +27,7 @@ Note: Use ESP32 board version 2.0.x for painlessMesh compatibility
 // Configuration
 // ===========================
 #define MAX_IMAGES 4  // Maximum simultaneous image receptions
+#define WIFI_PROTOCOL_MASK (WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N | WIFI_PROTOCOL_LR)
   
 // ===========================
 // Image Reception Structure
@@ -368,6 +370,29 @@ void setup() {
   mesh.onNewConnection(&newConnectionCallback);
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
+
+  // mesh.init() configures AP+STA and resets the protocol bitmap; reapply combined mask.
+  delay(100);
+  esp_err_t staResult = esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_MASK);
+  esp_err_t apResult = esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_MASK);
+
+  if (staResult == ESP_OK && apResult == ESP_OK) {
+    Serial.println("[R1] WiFi STA/AP protocols set to 11b/g/n + LR");
+  } else {
+    Serial.printf("[R1] WARNING: Failed to set STA/AP protocol mask (STA=%d, AP=%d)\n",
+                  staResult, apResult);
+  }
+
+  uint8_t staProtocol = 0;
+  uint8_t apProtocol = 0;
+  esp_wifi_get_protocol(WIFI_IF_STA, &staProtocol);
+  esp_wifi_get_protocol(WIFI_IF_AP, &apProtocol);
+  Serial.printf("[R1] STA protocol bitmap: 0x%02X (LR %s)\n",
+                staProtocol,
+                (staProtocol & WIFI_PROTOCOL_LR) ? "enabled" : "disabled");
+  Serial.printf("[R1]  AP protocol bitmap: 0x%02X (LR %s)\n",
+                apProtocol,
+                (apProtocol & WIFI_PROTOCOL_LR) ? "enabled" : "disabled");
   
   Serial.printf("[R1] Mesh initialized\n");
   Serial.printf("[R1] Node ID: %u\n", mesh.getNodeId());

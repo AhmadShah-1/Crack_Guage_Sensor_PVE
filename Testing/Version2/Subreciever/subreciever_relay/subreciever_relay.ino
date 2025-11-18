@@ -13,6 +13,7 @@
  
 #include <esp_now.h>
 #include <WiFi.h>
+#include "esp_wifi.h"
 #include "painlessMesh.h"
 #include <Arduino_JSON.h>
  
@@ -36,6 +37,7 @@
 #define MAX_CAMERAS 4  // Maximum simultaneous camera receptions
 #define MESH_MAX_RETRIES 3  // Retry attempts for mesh transmission
 #define MESH_RETRY_DELAY 50  // Delay between retries (ms)
+#define WIFI_PROTOCOL_MASK (WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N | WIFI_PROTOCOL_LR)
  
 // ===========================
 // ESP-NOW Packet Structure (must match transmitter)
@@ -128,8 +130,8 @@ ImageBuffer* getBufferForCamera(const char* cameraID) {
 // ===========================
 // ESP-NOW Receive Callback
 // ===========================
-// Note: For ESP32 core 3.x+ (IDF 5.x)
-void OnDataRecv(const esp_now_recv_info *recv_info, const uint8_t *incomingData, int len) {
+// Note: Signature for ESP32 core 2.0.x (IDF 4.x) uses the sender MAC pointer.
+void OnDataRecv(const uint8_t *mac_addr, const uint8_t *incomingData, int len) {
   esp_now_packet receivedPacket;
   memcpy(&receivedPacket, incomingData, sizeof(receivedPacket));
  
@@ -426,6 +428,20 @@ void setup() {
   // Set WiFi to Station mode
   WiFi.mode(WIFI_STA);
  
+  // Apply combined Wi-Fi protocols (11b/g/n + LR) for ESP-NOW reception
+  if (esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_MASK) == ESP_OK) {
+    Serial.printf("[%s] WiFi STA protocols set to 11b/g/n + LR\n", SUBRECEIVER_ID);
+  } else {
+    Serial.printf("[%s] WARNING: Failed to set STA protocol mask\n", SUBRECEIVER_ID);
+  }
+
+  uint8_t staProtocol = 0;
+  esp_wifi_get_protocol(WIFI_IF_STA, &staProtocol);
+  Serial.printf("[%s] STA protocol bitmap: 0x%02X (LR %s)\n",
+                SUBRECEIVER_ID,
+                staProtocol,
+                (staProtocol & WIFI_PROTOCOL_LR) ? "enabled" : "disabled");
+
   // Print MAC Address
   Serial.printf("[%s] MAC Address: %s\n", SUBRECEIVER_ID, WiFi.macAddress().c_str());
  
@@ -448,6 +464,30 @@ void setup() {
   mesh.onChangedConnections(&changedConnectionCallback);
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
  
+  // mesh.init() switches interfaces to AP+STA and resets protocol bitmap.
+  delay(100);
+  esp_err_t staResult = esp_wifi_set_protocol(WIFI_IF_STA, WIFI_PROTOCOL_MASK);
+  esp_err_t apResult = esp_wifi_set_protocol(WIFI_IF_AP, WIFI_PROTOCOL_MASK);
+
+  if (staResult == ESP_OK && apResult == ESP_OK) {
+    Serial.printf("[%s] WiFi STA/AP protocols set to 11b/g/n + LR\n", SUBRECEIVER_ID);
+  } else {
+    Serial.printf("[%s] WARNING: Failed to set STA/AP protocol mask (STA=%d, AP=%d)\n",
+                  SUBRECEIVER_ID, staResult, apResult);
+  }
+
+  esp_wifi_get_protocol(WIFI_IF_STA, &staProtocol);
+  uint8_t apProtocol = 0;
+  esp_wifi_get_protocol(WIFI_IF_AP, &apProtocol);
+  Serial.printf("[%s] STA protocol bitmap: 0x%02X (LR %s)\n",
+                SUBRECEIVER_ID,
+                staProtocol,
+                (staProtocol & WIFI_PROTOCOL_LR) ? "enabled" : "disabled");
+  Serial.printf("[%s]  AP protocol bitmap: 0x%02X (LR %s)\n",
+                SUBRECEIVER_ID,
+                apProtocol,
+                (apProtocol & WIFI_PROTOCOL_LR) ? "enabled" : "disabled");
+
   Serial.printf("[%s] Mesh initialized\n", SUBRECEIVER_ID);
   Serial.printf("[%s] Mesh Node ID: %u\n", SUBRECEIVER_ID, mesh.getNodeId());
   Serial.println("========================================");

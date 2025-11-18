@@ -1,6 +1,7 @@
 import time
 import json
 from azure.iot.device import IoTHubDeviceClient, Message
+import sys
 
 class IoTClient:
     def __init__(self, connection_string):
@@ -9,14 +10,24 @@ class IoTClient:
 
     def connect(self):
         try:
+            print(f"Attempting to connect with string starting: {self.connection_string[:30]}...")
             # Create the client
             self.client = IoTHubDeviceClient.create_from_connection_string(self.connection_string)
-            print("Connecting to Azure IoT Hub...")
+            print("Client created. Connecting to Azure IoT Hub...")
             self.client.connect()
             print("Connected to Azure IoT Hub!")
             return True
         except Exception as e:
-            print(f"Failed to connect to Azure IoT Hub: {e}")
+            print("\n" + "="*40)
+            print(f"CONNECTION ERROR: {e}")
+            print("="*40 + "\n")
+            # Check for common errors
+            if "Unauthorized" in str(e):
+                print("HINT: Your Connection String might be wrong. Check DeviceId and SharedAccessKey.")
+            elif "getaddrinfo failed" in str(e):
+                print("HINT: DNS/Network Error. Check your internet connection and HostName.")
+            elif "Time" in str(e) or "ssl" in str(e).lower():
+                print("HINT: Check your System Time. SSL requires correct clock time.")
             return False
 
     def send_telemetry(self, data_dict):
@@ -41,4 +52,3 @@ class IoTClient:
     def disconnect(self):
         if self.client:
             self.client.shutdown()
-

@@ -90,5 +90,5 @@ void loop() {
     Serial.println("Error sending data");
   }
 
-  delay(50); // 20 updates per second
+  delay(5000); // 20 updates per second
 }

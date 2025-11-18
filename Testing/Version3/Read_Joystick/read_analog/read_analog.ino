@@ -13,8 +13,8 @@
  */
 
  // Pin definitions for ESP32-CAM (avoiding camera pins)
- #define VRX_PIN  33 // ESP32-CAM GPIO33 (ADC1_CH5) connected to VRX pin
- #define VRY_PIN  32 // ESP32-CAM GPIO32 (ADC1_CH4) connected to VRY pin
+ #define VRX_PIN  16 // ESP32-CAM GPIO33 (ADC1_CH5) connected to VRX pin
+ #define VRY_PIN  0 // ESP32-CAM GPIO32 (ADC1_CH4) connected to VRY pin
  // Note: GPIO32 is PWDN on ESP32-CAM. If camera needs power control, use GPIO2 or GPIO12 instead
  
  int valueX = 0; // to store the X-axis value

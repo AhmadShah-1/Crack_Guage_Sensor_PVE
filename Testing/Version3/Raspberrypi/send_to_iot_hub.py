@@ -11,9 +11,12 @@ class IoTClient:
     def connect(self):
         try:
             print(f"Attempting to connect with string starting: {self.connection_string[:30]}...")
-            # Create the client
-            self.client = IoTHubDeviceClient.create_from_connection_string(self.connection_string)
-            print("Client created. Connecting to Azure IoT Hub...")
+            # Create the client - Force WebSockets (Port 443) to bypass firewall blocks on Port 8883
+            self.client = IoTHubDeviceClient.create_from_connection_string(
+                self.connection_string,
+                websockets=True
+            )
+            print("Client created (using WebSockets). Connecting to Azure IoT Hub...")
             self.client.connect()
             print("Connected to Azure IoT Hub!")
             return True

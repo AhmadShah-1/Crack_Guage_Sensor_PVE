@@ -43,6 +43,10 @@ class IoTClient:
             msg_body = json.dumps(data_dict)
             message = Message(msg_body)
             
+            # CRITICAL: Set these properties so Azure knows it's JSON
+            message.content_encoding = "utf-8"
+            message.content_type = "application/json"
+
             # Optional: Add custom properties
             # message.custom_properties["sensorType"] = "joystick"
 

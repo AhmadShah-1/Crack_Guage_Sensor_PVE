@@ -36,10 +36,13 @@ void receivedCallback(uint32_t from, String &msg) {
     const char* sub_id = (const char*)data["subreceiver_id"];
     int x = (int)data["x"];
     int y = (int)data["y"];
+
+    int rssi = (int)data["rssi"]; 
+
     
     // Output formatted string for Serial Parser (Raspberry Pi / PC)
     // Format: JOYSTICK,DEVICE_ID,SUB_ID,X,Y
-    Serial.printf("JOYSTICK,%s,%s,%d,%d\n", device_id, sub_id, x, y);
+    Serial.printf("JOYSTICK,%s,%s,%d,%d\n", device_id, sub_id, x, y, rssi);
   }
 }
 

@@ -56,7 +56,7 @@ def main():
                                 pass
 
                         # Print status to console
-                        print(f"[{telemetry['timestamp']}] Dev: {telemetry['device_id']} | X: {telemetry['x']:<4} | Y: {telemetry['y']:<4} | Signal: {signal_str}")
+                        print(f"Signal: {signal_str}")
 
                         # Send to Azure
                         iot_client.send_telemetry(telemetry)

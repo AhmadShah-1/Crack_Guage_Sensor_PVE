@@ -30,11 +30,11 @@ def main():
                 except UnicodeDecodeError:
                     continue # Skip bad frames
                 
-                # Expected Format: JOYSTICK,DEVICE_ID,SUB_ID,X,Y
+                # Expected Format: JOYSTICK,DEVICE_ID,SUB_ID,X,Y,[RSSI]
                 if line.startswith("JOYSTICK"):
                     parts = line.split(',')
                     
-                    if len(parts) == 5:
+                    if len(parts) >= 5:
                         # Create structured data
                         telemetry = {
                             "timestamp": datetime.utcnow().isoformat(),
@@ -45,6 +45,19 @@ def main():
                             "y": int(parts[4])
                         }
                         
+                        # Handle Optional Signal Strength (RSSI)
+                        signal_str = "N/A"
+                        if len(parts) >= 6:
+                            try:
+                                rssi = int(parts[5])
+                                telemetry["rssi"] = rssi
+                                signal_str = f"{rssi} dBm"
+                            except ValueError:
+                                pass
+
+                        # Print status to console
+                        print(f"Signal: {signal_str}")
+
                         # Send to Azure
                         iot_client.send_telemetry(telemetry)
                     else:
